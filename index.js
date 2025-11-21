@@ -408,9 +408,7 @@ app.get('/', (req, res) => {
             
             <!-- DATA SIDE (LEFT) -->
             <div class="data-col">
-                <div class="header-meta">
-                    <span class="marine-id">SEC: ${userData.section} // ID: 001-ACE</span>
-                </div>
+                
 
                 <div class="identity-block">
                     <h1 class="glitch-reveal">${userData.name}</h1>
@@ -423,8 +421,8 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="details">
                         <div class="detail-row">
-                            <span class="detail-label">Affiliation</span>
-                            <span class="detail-value">Spade Pirates</span>
+                            <span class="detail-label">Section</span>
+                            <span class="detail-value">BSIT Service Management 4102</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Status</span>
