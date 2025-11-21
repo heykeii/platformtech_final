@@ -12,14 +12,19 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.static(__dirname));
 
-// --- DATA ---
-const myName = "Kurt N. Dorado";
-const mySection = "BSIT SM 4102";
-const myQuote = "No matter what happens, don’t be sorry for who you are.";
+// --- USER DATA ---
+const userData = {
+    name: "Kurt Dorado",
+    role: "Student / Developer",
+    section: "BSIT SM 4102",
+    bounty: 450000000,
+    quote: "No matter what happens, don’t be sorry for who you are.",
+    author: "Portgas D. Ace"
+};
 
 // --- IMAGES ---
 const myImage = "/profile.jpeg";
-const aceImage = "/ace.jpg"; 
+const aceImage = "/ace.jpg";
 
 app.get('/', (req, res) => {
   const htmlResponse = `
@@ -28,447 +33,563 @@ app.get('/', (req, res) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Wanted: Cloud Engineer</title>
-        <link href="https://fonts.googleapis.com/css2?family=Rye&family=Cinzel:wght@700&family=Calistoga&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+        <title>Fire Fist: ${userData.name}</title>
+        
+        <!-- LIBRARIES -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+        
+        <!-- FONTS -->
+        <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Montserrat:wght@300;400;600&family=Italiana&display=swap" rel="stylesheet">
+        
         <style>
             :root {
-                --poster-paper: #f4e4bc;
-                --poster-ink: #4a3b2a;
-                --ace-fire: #ff4500;
-                --ace-gold: #ffd700;
-                --card-bg: #1a1a1a;
+                /* PALETTE */
+                --c-fire: #ff4500;       /* Vibrant Orange */
+                --c-ember: #ffae00;      /* Gold/Yellow */
+                --c-void: #050202;       /* Deep Black */
+                --c-glass: rgba(18, 10, 10, 0.95); /* Dark Obsidian */
+                --c-border: rgba(255, 69, 0, 0.4); /* Fire Border */
+                --c-text: #ffffff;
+                --c-text-muted: #a0a0a0;
             }
 
-            * { box-sizing: border-box; }
+            * { box-sizing: border-box; margin: 0; padding: 0; cursor: none; }
 
             body {
-                background-color: #050000;
-                /* Deep red pulsing background */
-                background-image: radial-gradient(circle at 50% 100%, #300000 0%, #000000 70%);
-                font-family: 'Roboto', sans-serif;
-                color: #333;
+                background-color: var(--c-void);
+                color: var(--c-text);
+                font-family: 'Montserrat', sans-serif;
+                height: 100vh;
+                overflow: hidden;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                /* Deep Magma Gradient */
+                background-image: radial-gradient(circle at 50% 100%, #300500 0%, #000000 90%);
+            }
+
+            /* --- LOADING SCREEN --- */
+            #loader {
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: #000;
+                z-index: 2000;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                min-height: 100vh;
-                margin: 0;
-                padding: 20px;
-                overflow-x: hidden;
-                perspective: 1000px;
-                animation: backgroundPulse 4s infinite alternate;
             }
-
-            @keyframes backgroundPulse {
-                0% { background-image: radial-gradient(circle at 50% 100%, #300000 0%, #000000 70%); }
-                100% { background-image: radial-gradient(circle at 50% 100%, #4a0000 10%, #000000 70%); }
+            .loader-text {
+                font-family: 'Cinzel', serif;
+                color: var(--c-fire);
+                font-size: 1.2rem;
+                letter-spacing: 6px;
+                text-transform: uppercase;
+                margin-bottom: 20px;
+                animation: pulse 1.5s infinite alternate;
             }
-
-            /* --- ULTIMATE LIQUID FIRE ENGINE --- */
-            /* This filter trick merges particles into a 'liquid' */
-            .fire-layer {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                pointer-events: none;
-                z-index: 0;
-                filter: contrast(1.5) brightness(1.2);
+            .loader-line-wrapper {
+                width: 200px; height: 2px;
+                background: #222;
+                position: relative;
+                overflow: hidden;
             }
-
-            /* Particle Styles */
-            .particle {
+            .loader-line {
                 position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: linear-gradient(90deg, var(--c-fire), var(--c-ember));
+                transform: translateX(-100%);
+                box-shadow: 0 0 10px var(--c-fire);
+            }
+
+            /* --- CUSTOM CURSOR --- */
+            .cursor-follower {
+                position: fixed;
+                top: 0; left: 0; width: 40px; height: 40px;
+                border: 1px solid rgba(255, 69, 0, 0.6);
                 border-radius: 50%;
-                opacity: 0;
+                pointer-events: none;
+                z-index: 9999;
+                transition: width 0.3s, height 0.3s, background-color 0.3s;
                 mix-blend-mode: screen;
             }
-
-            /* 1. Base Plasma (Thick, Slow) */
-            .p-base {
-                background: radial-gradient(circle, rgba(255,50,0,0.8) 0%, rgba(100,0,0,0) 70%);
-                bottom: -50px;
-                animation: floatBase linear infinite;
-                filter: blur(20px);
+            .cursor-dot {
+                position: fixed;
+                top: 0; left: 0; width: 6px; height: 6px;
+                background: var(--c-ember);
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 9999;
+                transform: translate(-50%, -50%);
+                box-shadow: 0 0 10px var(--c-fire);
             }
 
-            /* 2. Rising Flames (Fast, Bright) */
-            .p-flame {
-                background: radial-gradient(circle, #ffae00 0%, rgba(255,69,0,0.5) 60%, transparent 100%);
-                bottom: -20px;
-                animation: riseWobble linear infinite;
-                filter: blur(8px);
+            /* --- BACKGROUND CANVAS --- */
+            #webgl-canvas {
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                z-index: 0;
+                opacity: 0.8; 
             }
 
-            /* 3. Sparks (Tiny, White hot) */
-            .p-spark {
-                background: #fff;
-                bottom: 0;
-                animation: sparkFly linear infinite;
-                box-shadow: 0 0 10px #ffaa00;
-            }
-
-            /* Keyframes for realistic fire movement */
-            @keyframes floatBase {
-                0% { transform: translateX(0) scale(1); opacity: 0; }
-                20% { opacity: 0.6; }
-                100% { transform: translateX(20px) translateY(-150px) scale(1.5); opacity: 0; }
-            }
-
-            @keyframes riseWobble {
-                0% { transform: translateX(0) translateY(0) scale(1); opacity: 0; }
-                10% { opacity: 1; }
-                50% { transform: translateX(-15px) translateY(-40vh) scale(1.2); }
-                100% { transform: translateX(15px) translateY(-80vh) scale(0); opacity: 0; }
-            }
-
-            @keyframes sparkFly {
-                0% { transform: translateY(0) translateX(0); opacity: 1; }
-                100% { transform: translateY(-100vh) translateX(calc(-50px + 100px * var(--rnd))); opacity: 0; }
-            }
-
-            /* --- TEXT EFFECTS --- */
-            h1.main-title {
-                font-family: 'Rye', serif;
-                color: #fff;
-                font-size: 4rem;
-                /* Heat Haze Text Shadow */
-                text-shadow: 
-                    0 0 10px rgba(255, 69, 0, 0.8),
-                    0 0 20px rgba(255, 0, 0, 0.6),
-                    0 0 40px rgba(255, 69, 0, 0.4);
-                margin-bottom: 50px;
-                letter-spacing: 4px;
-                z-index: 2;
-                animation: heatHaze 3s infinite alternate, slideIn 1s ease-out;
-            }
-
-            @keyframes heatHaze {
-                0% { text-shadow: 0 0 10px rgba(255,69,0,0.8), 0 0 20px rgba(255,0,0,0.6); transform: scale(1); }
-                100% { text-shadow: 0 0 15px rgba(255,100,0,1), 0 0 30px rgba(255,0,0,0.8); transform: scale(1.02); }
-            }
-
-            .container {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 80px;
-                max-width: 1400px;
-                align-items: center;
-                z-index: 2;
-            }
-
-            .card-container { perspective: 1000px; }
-
-            .card-3d {
-                width: 340px;
-                height: 560px;
+            /* --- THE MONOLITH CARD (Updated Design) --- */
+            .monolith {
                 position: relative;
-                transition: transform 0.05s linear; /* Faster response */
-                transform-style: preserve-3d;
-                animation: float 6s ease-in-out infinite;
+                width: 1100px;
+                height: 650px;
+                
+                /* Refined Obsidian Look */
+                background: linear-gradient(145deg, rgba(25, 15, 10, 0.96), rgba(5, 2, 2, 0.98));
+                backdrop-filter: blur(40px);
+                -webkit-backdrop-filter: blur(40px);
+                
+                /* Elegant Borders */
+                border: 1px solid var(--c-border);
+                border-radius: 8px;
+                
+                /* Deep Shadow for pop */
+                box-shadow: 
+                    0 50px 100px -20px rgba(0,0,0,0.9),
+                    0 0 30px rgba(255, 69, 0, 0.15),
+                    inset 0 0 100px rgba(0,0,0,0.8);
+                
+                display: grid;
+                grid-template-columns: 1.1fr 1fr;
+                z-index: 10;
+                overflow: hidden;
+                
+                /* Removed Entrance Animations */
+                opacity: 1;
+                transform: none;
             }
 
-            /* --- WANTED POSTER --- */
-            .wanted-poster {
-                background-color: var(--poster-paper);
-                background-image: url('https://www.transparenttextures.com/patterns/paper.png');
-                width: 100%;
-                height: 100%;
-                padding: 25px 20px;
-                border: 1px solid #bfa77a;
+            /* Top Fire Accent Line */
+            .monolith::before {
+                content: "";
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 3px;
+                background: linear-gradient(90deg, transparent, var(--c-fire), var(--c-ember), transparent);
+                z-index: 20;
+                box-shadow: 0 2px 15px var(--c-fire);
+            }
+
+            /* Subtle Grain Texture Overlay */
+            .monolith::after {
+                content: "";
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
+                opacity: 0.2;
+                pointer-events: none;
+                z-index: 1;
+            }
+
+            /* --- LEFT SIDE: PROFILE DATA --- */
+            .data-col {
+                padding: 70px;
                 display: flex;
                 flex-direction: column;
-                align-items: center;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-                transform: translateZ(0);
-            }
-
-            /* Nail Effect */
-            .wanted-poster::after {
-                content: '';
-                position: absolute;
-                top: -12px; width: 16px; height: 16px;
-                background: #222;
-                border-radius: 50%;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+                justify-content: center;
+                position: relative;
                 z-index: 5;
+                border-right: 1px solid rgba(255, 255, 255, 0.05);
             }
 
-            .wanted-title {
-                font-family: 'Rye', serif;
-                font-size: 4rem;
-                color: var(--poster-ink);
-                margin: 0 0 10px 0;
-                line-height: 0.8;
-                text-align: center;
-                width: 100%;
+            /* Header */
+            .header-meta {
+                display: flex;
+                align-items: center;
+                margin-bottom: 30px;
+                font-family: 'Cinzel', serif;
+            }
+            .marine-id {
+                font-size: 0.75rem;
+                color: var(--c-text-muted);
+                letter-spacing: 4px;
+                text-transform: uppercase;
+                padding-bottom: 10px;
+                border-bottom: 1px solid var(--c-border);
             }
 
-            .image-frame {
-                width: 90%;
-                height: 220px;
-                background: #ddd;
-                border: 5px solid var(--poster-ink);
+            /* Identity Block */
+            .identity-block { margin-bottom: 45px; }
+            
+            .identity-block h1 {
+                font-family: 'Cinzel', serif;
+                font-size: 3.5rem;
+                line-height: 1;
                 margin-bottom: 10px;
-                overflow: hidden;
-                transform: translateZ(20px);
-                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                /* Gold/White Gradient Text */
+                background: linear-gradient(to right, #ffffff, #ffccaa);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                filter: drop-shadow(0 0 15px rgba(255, 69, 0, 0.2));
             }
 
-            .wanted-image { width: 100%; height: 100%; object-fit: cover; }
+            .identity-block h2 {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 1.1rem;
+                color: var(--c-fire);
+                letter-spacing: 6px;
+                text-transform: uppercase;
+                font-weight: 600;
+            }
 
-            .dead-or-alive {
-                font-family: 'Calistoga', serif;
-                font-size: 1.6rem;
-                color: var(--poster-ink);
+            /* Stats Grid */
+            .stats-grid {
+                display: flex;
+                align-items: center;
+                gap: 30px;
+                margin-bottom: 45px;
+                /* Inner Plate */
+                background: rgba(255,255,255,0.03);
+                padding: 20px;
+                border-radius: 6px;
+                border: 1px solid rgba(255,255,255,0.05);
+            }
+
+            /* Circular Avatar with Fire Glow */
+            .avatar-container {
+                width: 90px; height: 90px;
+                border-radius: 50%;
+                padding: 3px;
+                background: linear-gradient(135deg, var(--c-fire), #000);
+                position: relative;
+                box-shadow: 0 0 20px rgba(255, 69, 0, 0.3);
+            }
+            
+            .avatar-img {
+                width: 100%; height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 2px solid #1a1a1a;
+                filter: grayscale(0.2) contrast(1.1);
+            }
+
+            .details { display: flex; flex-direction: column; gap: 8px; }
+            
+            .detail-row { display: flex; flex-direction: column; }
+            .detail-label {
+                font-size: 0.65rem;
+                color: var(--c-text-muted);
                 text-transform: uppercase;
                 letter-spacing: 1px;
-                margin: 10px 0;
             }
+            .detail-value { font-size: 1rem; font-weight: 600; letter-spacing: 1px; color: #f0f0f0; }
 
-            .wanted-name {
-                font-family: 'Calistoga', serif;
-                font-size: 2.2rem; 
-                color: #2c2c2c;
+            /* Bounty Section - Enhanced */
+            .bounty-section {
+                position: relative;
+                padding-left: 25px;
+                border-left: 4px solid var(--c-ember);
+            }
+            
+            .bounty-label {
+                font-family: 'Cinzel', serif;
+                font-size: 0.8rem;
+                color: var(--c-text-muted);
+                margin-bottom: 5px;
                 text-transform: uppercase;
-                margin: 0;
-                line-height: 1;
-                transform: translateZ(30px);
-                text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
+                letter-spacing: 2px;
+            }
+            
+            .bounty-val {
+                font-family: 'Cinzel', serif;
+                font-size: 3rem;
+                color: var(--c-ember);
+                font-weight: 700;
+                letter-spacing: 2px;
+                text-shadow: 0 0 30px rgba(255, 174, 0, 0.3);
             }
 
-            .section-stamp {
-                margin: 15px 0;
-                color: #c0392b;
-                border: 3px solid #c0392b;
-                padding: 2px 10px;
-                transform: rotate(-8deg) translateZ(25px);
-                font-size: 1.2rem;
-                font-weight: bold;
-                font-family: 'Courier New', Courier, monospace;
-                opacity: 0.9;
-            }
-
-            .bounty-amount {
-                font-family: 'Calistoga', serif;
-                font-size: 2rem; 
-                color: #2c2c2c;
-                margin-top: auto;
-                margin-bottom: 30px;
-            }
-
-            .marine-footer {
-                position: absolute;
-                bottom: 15px; width: 100%; text-align: center;
-                font-family: 'Calistoga', serif; font-size: 2.2rem;
-                color: var(--poster-ink); opacity: 0.2; letter-spacing: 4px;
-            }
-
-            /* --- ACE QUOTE CARD --- */
-            .quote-card {
-                background: rgba(20, 20, 20, 0.85);
-                width: 100%;
-                height: 100%;
-                padding: 30px 20px;
-                border-radius: 15px;
-                color: #fff;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: space-between;
-                border: 1px solid #333;
-                box-shadow: 0 0 50px rgba(255, 69, 0, 0.3);
+            /* --- RIGHT SIDE: ACE VISUAL --- */
+            .visual-col {
+                position: relative;
                 overflow: hidden;
-                backdrop-filter: blur(5px);
+                background: #000;
+                /* Smooth integration with card */
+                mask-image: linear-gradient(to right, transparent 0%, black 20%);
+                -webkit-mask-image: linear-gradient(to right, transparent 0%, black 20%);
             }
 
-            .quote-card::before {
-                content: '';
+            .hero-img-container {
                 position: absolute;
-                inset: -2px;
-                background: linear-gradient(45deg, #ff0000, #ff4500, #ffd700, #ff0000);
-                background-size: 400%;
-                z-index: -1;
-                border-radius: 16px;
-                animation: borderGlow 2s linear infinite;
+                top: 0; left: 0; width: 100%; height: 100%;
+            }
+
+            .hero-img {
+                width: 100%; height: 100%;
+                object-fit: cover;
+                object-position: center top;
                 opacity: 0.8;
+                transition: transform 0.5s ease;
+                filter: saturate(1.1) contrast(1.1);
             }
 
-            /* Holographic Shine */
-            .shine {
-                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0) 100%);
-                pointer-events: none; z-index: 10;
+            /* Gentle zoom on hover only */
+            .monolith:hover .hero-img { transform: scale(1.03); }
+
+            /* Quote Overlay */
+            .quote-container {
+                position: absolute;
+                bottom: 0; left: 0; width: 100%;
+                padding: 50px;
+                background: linear-gradient(to top, rgba(10, 2, 0, 0.95), transparent);
+                z-index: 10;
             }
 
-            .ace-profile-image {
-                width: 180px; height: 180px; border-radius: 50%;
-                border: 4px solid var(--ace-fire); object-fit: cover;
-                transform: translateZ(40px);
-                box-shadow: 0 0 35px rgba(255, 69, 0, 0.6);
-            }
-
-            .ace-icons {
-                font-size: 2.5rem; margin-top: 15px; transform: translateZ(20px);
-                text-shadow: 0 0 10px rgba(255,69,0,0.8);
-            }
-
-            blockquote {
-                font-family: 'Cinzel', serif; font-size: 1.5rem; line-height: 1.5;
-                margin: 20px 0; color: #fff; text-align: center;
-                transform: translateZ(50px);
-                text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            .quote-text {
+                font-family: 'Italiana', serif;
+                font-size: 1.6rem;
+                line-height: 1.4;
+                color: #e0e0e0;
+                margin-bottom: 15px;
+                font-style: italic;
+                text-shadow: 0 2px 4px rgba(0,0,0,0.8);
             }
 
             .quote-author {
-                font-family: 'Cinzel', serif; font-size: 1.1rem; color: #ff4500;
-                font-weight: bold; letter-spacing: 3px; text-transform: uppercase;
-                transform: translateZ(20px); border-top: 1px solid #555;
-                padding-top: 15px; width: 80%;
+                font-family: 'Cinzel', serif;
+                font-size: 0.9rem;
+                color: var(--c-fire);
+                letter-spacing: 4px;
+                text-transform: uppercase;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+            }
+            
+            .quote-author::before {
+                content: '';
+                display: inline-block;
+                width: 40px; height: 2px;
+                background: var(--c-fire);
+                margin-right: 15px;
+                box-shadow: 0 0 8px var(--c-fire);
             }
 
-            /* ANIMATIONS */
-            @keyframes float {
-                0%, 100% { transform: translateY(0); }
-                50% { transform: translateY(-15px); }
-            }
-            @keyframes borderGlow { 0% { background-position: 0 0; } 100% { background-position: 400% 0; } }
-            @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            /* --- ANIMATIONS --- */
+            @keyframes pulse { 0%, 100% { opacity: 0.6; text-shadow: 0 0 10px var(--c-fire); } 50% { opacity: 1; text-shadow: 0 0 20px var(--c-fire); } }
 
-            @media (max-width: 800px) {
-                .main-title { font-size: 2.5rem; }
-                .container { gap: 40px; }
+            /* --- MOBILE --- */
+            @media (max-width: 1100px) {
+                .monolith { 
+                    width: 90vw; height: auto; 
+                    grid-template-columns: 1fr; 
+                    margin: 20px 0;
+                }
+                .visual-col { height: 400px; order: 1; border-bottom: 1px solid rgba(255,255,255,0.1); mask-image: none; -webkit-mask-image: none; }
+                .data-col { order: 2; padding: 40px; border-right: none; }
+                .hero-img { mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 100%); }
+                .stats-grid { flex-direction: column; align-items: flex-start; }
             }
         </style>
     </head>
     <body>
 
-        <!-- The Fire Layer -->
-        <div class="fire-layer" id="fire"></div>
+        <!-- PRELOADER -->
+        <div id="loader">
+            <div class="loader-text">Igniting Will of Fire...</div>
+            <div class="loader-line-wrapper">
+                <div class="loader-line"></div>
+            </div>
+        </div>
 
-        <h1 class="main-title">THE NEW ERA</h1>
+        <!-- CURSOR -->
+        <div class="cursor-follower"></div>
+        <div class="cursor-dot"></div>
 
-        <div class="container">
+        <!-- BACKGROUND -->
+        <canvas id="webgl-canvas"></canvas>
+
+        <!-- MAIN CARD -->
+        <div class="monolith" id="card">
             
-            <!-- CARD 1 -->
-            <div class="card-container">
-                <div class="card-3d" id="poster">
-                    <div class="shine"></div>
-                    <div class="wanted-poster">
-                        <div class="wanted-title">WANTED</div>
-                        <div class="image-frame">
-                            <img src="${myImage}" alt="Target" class="wanted-image">
-                        </div>
-                        <div class="dead-or-alive">DEAD OR ALIVE</div>
-                        <div class="wanted-name">${myName}</div>
-                        <div class="section-stamp">${mySection}</div>
-                        <div class="bounty-amount">
-                            <span>฿</span> 5,000,000,000-
-                        </div>
-                        <div class="marine-footer">MARINE</div>
+            <!-- DATA SIDE (LEFT) -->
+            <div class="data-col">
+                <div class="header-meta">
+                    <span class="marine-id">SEC: ${userData.section} // ID: 001-ACE</span>
+                </div>
+
+                <div class="identity-block">
+                    <h1 class="glitch-reveal">${userData.name}</h1>
+                    <h2>${userData.role}</h2>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="avatar-container">
+                        <img src="${myImage}" class="avatar-img" alt="Profile">
                     </div>
+                    <div class="details">
+                        <div class="detail-row">
+                            <span class="detail-label">Affiliation</span>
+                            <span class="detail-value">Spade Pirates</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value" style="color: var(--c-fire)">WANTED DEAD OR ALIVE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bounty-section">
+                    <div class="bounty-label">Total Bounty</div>
+                    <div class="bounty-val" id="bounty-display">0</div>
                 </div>
             </div>
 
-            <!-- CARD 2 -->
-            <div class="card-container">
-                <div class="card-3d" id="quote">
-                    <div class="shine"></div>
-                    <div class="quote-card">
-                        <img src="${aceImage}" alt="Ace" class="ace-profile-image">
-                        <div class="ace-icons">🔥🍩💔</div>
-                        <blockquote>
-                            "${myQuote}"
-                        </blockquote>
-                        <div class="quote-author">- Portgas D. Ace</div>
-                    </div>
+            <!-- VISUAL SIDE (RIGHT) -->
+            <div class="visual-col">
+                <div class="hero-img-container">
+                    <img src="${aceImage}" class="hero-img" alt="Portgas D. Ace">
+                </div>
+                
+                <div class="quote-container">
+                    <p class="quote-text">"${userData.quote}"</p>
+                    <div class="quote-author">${userData.author}</div>
                 </div>
             </div>
 
         </div>
 
         <script>
-            // --- 1. ULTIMATE FIRE GENERATOR ---
-            const fireContainer = document.getElementById('fire');
-            
-            function spawnParticle(type) {
-                const p = document.createElement('div');
-                p.classList.add('particle', type);
+            // --- VARIABLES ---
+            const cursorFollower = document.querySelector('.cursor-follower');
+            const cursorDot = document.querySelector('.cursor-dot');
+            const monolith = document.getElementById('card');
+
+            // --- 1. ENTRANCE LOGIC (Only Loader & Text) ---
+            window.addEventListener('load', () => {
+                const tl = gsap.timeline();
+
+                // Loader Animation
+                tl.to('.loader-line', { transform: 'translateX(0%)', duration: 1.5, ease: 'expo.inOut' })
+                  .to('#loader', { opacity: 0, duration: 0.8, onComplete: () => document.getElementById('loader').remove() })
+                  
+                  // Text Stagger (Card is already visible)
+                  .from('.identity-block h1', { x: -20, opacity: 0, duration: 0.8 }, "-=0.5")
+                  .from('.identity-block h2', { x: -20, opacity: 0, duration: 0.8 }, "-=0.6")
+                  
+                  // Start Bounty Count
+                  .call(startBountyCounter, null, "-=0.5");
+            });
+
+            // --- 2. BOUNTY COUNTER ---
+            function startBountyCounter() {
+                const obj = { val: 0 };
+                const target = ${userData.bounty};
+                const el = document.getElementById('bounty-display');
                 
-                // Random X start position
-                p.style.left = Math.random() * 100 + 'vw';
-                
-                let size, dur;
-                
-                if(type === 'p-base') {
-                    size = Math.random() * 100 + 100; // Huge base particles
-                    dur = Math.random() * 3 + 4; // Slow
-                } else if(type === 'p-flame') {
-                    size = Math.random() * 50 + 20; // Medium flames
-                    dur = Math.random() * 2 + 2; // Medium speed
-                } else { // spark
-                    size = Math.random() * 5 + 2; // Tiny sparks
-                    dur = Math.random() * 1 + 0.5; // Very fast
-                    p.style.setProperty('--rnd', Math.random()); // For variable spark drift
-                }
-                
-                p.style.width = size + 'px';
-                p.style.height = size + 'px';
-                p.style.animationDuration = dur + 's';
-                
-                fireContainer.appendChild(p);
-                
-                setTimeout(() => { p.remove(); }, dur * 1000);
+                gsap.to(obj, {
+                    val: target,
+                    duration: 2.5,
+                    ease: 'power4.out',
+                    onUpdate: () => {
+                        el.innerText = "฿ " + Math.floor(obj.val).toLocaleString();
+                    }
+                });
             }
 
-            // Intense generation loop
-            setInterval(() => spawnParticle('p-base'), 200);
-            setInterval(() => spawnParticle('p-flame'), 50);
-            setInterval(() => spawnParticle('p-spark'), 30);
-
-
-            // --- 2. HIGH PERFORMANCE 3D TILT ---
-            const cards = [document.getElementById('poster'), document.getElementById('quote')];
-
-            document.addEventListener('mousemove', (e) => {
+            // --- 3. CUSTOM CURSOR ---
+            window.addEventListener('mousemove', (e) => {
                 const x = e.clientX;
                 const y = e.clientY;
-                const midX = window.innerWidth / 2;
-                const midY = window.innerHeight / 2;
+                
+                gsap.to(cursorDot, { x: x, y: y, duration: 0.1 });
+                gsap.to(cursorFollower, { x: x, y: y, duration: 0.5, ease: 'power2.out' });
+                
+                // Card Tilt Logic (Subtle)
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                const tiltX = (y - centerY) / 60;
+                const tiltY = (centerX - x) / 60;
 
-                // Increased tilt range for more drama
-                const rotateX = ((y - midY) / midY) * -18;
-                const rotateY = ((x - midX) / midX) * 18;
-
-                cards.forEach(card => {
-                    card.style.animation = 'none'; // Pause float
-                    card.style.transform = \`rotateX(\${rotateX}deg) rotateY(\${rotateY}deg)\`;
-
-                    const shine = card.querySelector('.shine');
-                    const moveX = ((x / window.innerWidth) * 100) - 50;
-                    const moveY = ((y / window.innerHeight) * 100) - 50;
-                    
-                    // Reactive shine
-                    shine.style.background = \`linear-gradient(
-                        135deg, 
-                        rgba(255,255,255,0) \${0 + moveX + moveY}%, 
-                        rgba(255,255,255,0.25) \${50 + moveX + moveY}%, 
-                        rgba(255,255,255,0) \${100 + moveX + moveY}%
-                    )\`;
+                gsap.to(monolith, { 
+                    rotationX: tiltX, 
+                    rotationY: tiltY, 
+                    duration: 1, 
+                    ease: 'power2.out' 
                 });
             });
 
-            document.addEventListener('mouseleave', () => {
-                cards.forEach((card) => {
-                    card.style.transform = 'rotateX(0) rotateY(0)';
-                    card.querySelector('.shine').style.background = 'none';
-                    card.style.animation = 'float 6s ease-in-out infinite';
+            // Hover Expansion
+            document.querySelectorAll('a, img').forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    gsap.to(cursorFollower, { scale: 1.5, borderColor: '#ffae00', mixBlendMode: 'normal' });
+                });
+                el.addEventListener('mouseleave', () => {
+                    gsap.to(cursorFollower, { scale: 1, borderColor: 'rgba(255, 69, 0, 0.6)', mixBlendMode: 'screen' });
                 });
             });
+
+            // --- 4. THREE.JS BACKGROUND (RISING FIRE EMBERS) ---
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050202, 0.002);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas'), alpha: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Fire Particles
+            const particlesCount = 1500;
+            const posArray = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 30; // Wide spread
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            
+            // Material for Embers
+            const material = new THREE.PointsMaterial({
+                size: 0.03,
+                color: 0xff4500, // Orange Red
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particlesMesh = new THREE.Points(geometry, material);
+            scene.add(particlesMesh);
+            camera.position.z = 5;
+
+            // Animation Variables
+            let mouseX = 0;
+            let mouseY = 0;
+            
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX / window.innerWidth - 0.5;
+                mouseY = e.clientY / window.innerHeight - 0.5;
+            });
+
+            const clock = new THREE.Clock();
+
+            function animate() {
+                const elapsedTime = clock.getElapsedTime();
+                
+                // Gentle rotation of the entire system
+                particlesMesh.rotation.y = -0.05 * elapsedTime; 
+                
+                // Slight parallax based on mouse
+                particlesMesh.rotation.x += 0.05 * (mouseY - particlesMesh.rotation.x);
+                particlesMesh.rotation.y += 0.05 * (mouseX - particlesMesh.rotation.y);
+                
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
         </script>
-
     </body>
     </html>
   `;
